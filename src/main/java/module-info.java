@@ -5,4 +5,5 @@ module com.example.quizproject {
 
     opens com.example.quizproject to javafx.fxml;
     exports com.example.quizproject;
+    opens com.example.quizproject.model;
 }
