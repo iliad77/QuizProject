@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.example.quizproject.controller.menuController"
+      alignment="CENTER"
+      spacing="20"
+      prefWidth="600"
+      prefHeight="400">
+
+    <Label text="Java Fundamentals Quiz"
+           style="-fx-font-size: 28px; -fx-font-weight: bold;" />
+
+    <Button text="Load Quiz"
+            prefWidth="180"
+            onAction="#handleLoadQuiz"/>
+
+    <Button text="Start Quiz"
+            fx:id="startButton"
+            disable="false"
+            onAction="#handleStartQuiz"
+            prefWidth="180" />
+
+</VBox>
+
