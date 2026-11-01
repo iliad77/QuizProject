@@ -1,5 +1,7 @@
 package com.example.quizproject.controller;
 
+import com.example.quizproject.GameManager;
+
 import com.example.quizproject.model.Quiz;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
@@ -16,8 +18,17 @@ import com.example.quizproject.model.Question;
 import com.example.quizproject.model.MultipleChoice;
 import com.example.quizproject.model.TrueFalse;
 
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+
+
+
 import java.util.ArrayList;
 import java.util.List;
+
+import com.example.quizproject.QuestionFactory;
 
 public class menuController {
     @FXML
@@ -54,11 +65,21 @@ public class menuController {
         File selectedFile = fileChooser.showOpenDialog(window);
 
         if (selectedFile == null) {
-            return;}
+            return;
+        }
+
+        loadedQuiz = null;
+        startButton.setDisable(true);
         try {
             ObjectMapper mapper = new ObjectMapper();
 
             JsonNode root = mapper.readTree(selectedFile);
+
+            if (root == null || !root.isObject()) {
+                throw new IllegalArgumentException(
+                        "The JSON root must be an object."
+                );
+            }
 
             if (!root.hasNonNull("quizId")) {
                 throw new IllegalArgumentException("Quiz ID is missing.");
@@ -72,11 +93,7 @@ public class menuController {
                 throw new IllegalArgumentException("Quiz pages are missing.");
             }
 
-            if (root == null || !root.isObject()) {
-                throw new IllegalArgumentException(
-                        "The JSON root must be an object."
-                );
-            }
+
 
             String quizId = root.path("quizId").asText();
             String title = root.path("title").asText();
@@ -140,61 +157,13 @@ public class menuController {
                     }
 
 
-                    Question question = null;
-
-                    if (type.equals("radiogroup")) {
-
-                        List<String> choices = new ArrayList<>();
-
-                        for (JsonNode choice : element.path("choices")) {
-                            choices.add(choice.asText());
-                        }
-
-                        String choicesOrder =
-                                element.path("choicesOrder").asText();
-
-                        String correctAnswer =
-                                element.path("correctAnswer").asText();
-
-                        question = new MultipleChoice(
-                                questionId,
-                                questionTitle,
-                                timeLimit,
-                                required,
-                                choices,
-                                choicesOrder,
-                                correctAnswer
-                        );
-
-                    } else if (type.equals("boolean")) {
-
-                        String labelTrue =
-                                element.path("labelTrue").asText();
-
-                        String labelFalse =
-                                element.path("labelFalse").asText();
-
-                        boolean correctAnswer =
-                                element.path("correctAnswer").asBoolean();
-
-                        question = new TrueFalse(
-                                questionId,
-                                questionTitle,
-                                timeLimit,
-                                required,
-                                labelTrue,
-                                labelFalse,
-                                correctAnswer
-                        );
-                    }
-                    else {
-
-                        skippedQuestions++;
-                        System.out.println("Unsupported question type: " + type);
-                    }
+                    Question question = QuestionFactory.createQuestion(element, timeLimit);
 
                     if (question != null) {
                         quiz.addQuestion(question);
+                    } else {
+                        skippedQuestions++;
+                        System.out.println("Unsupported question type: " + type);
                     }
                 }
             }
@@ -208,6 +177,8 @@ public class menuController {
                 );
                 alert.showAndWait();
             }
+            loadedQuiz = quiz;
+            startButton.setDisable(false);
         } catch (IOException | IllegalArgumentException e) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Error");
@@ -228,6 +199,10 @@ public class menuController {
 
         Optional<String> result = dialog.showAndWait();
 
+        if (loadedQuiz == null || loadedQuiz.getQuestions().isEmpty()) {
+            return;
+        }
+
         if (result.isPresent()) {
 
             String playerName = result.get().trim();
@@ -237,7 +212,40 @@ public class menuController {
                 return;
             }
 
-            System.out.println("Player name: " + playerName);
+
+
+            try {
+
+                GameManager gameManager = GameManager.getInstance();
+
+                gameManager.startGame(loadedQuiz, playerName);
+
+
+                FXMLLoader loader = new FXMLLoader(
+                        getClass().getResource(
+                                "/com/example/quizproject/view/game-view.fxml"
+                        )
+                );
+
+                Parent root = loader.load();
+
+
+                Stage stage = (Stage) startButton.getScene().getWindow();
+
+                Scene scene = new Scene(root, 600, 400);
+
+                stage.setScene(scene);
+                stage.setTitle("Quiz - " + loadedQuiz.getTitle());
+
+            } catch (IOException e) {
+                e.printStackTrace();
+
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Navigation Error");
+                alert.setHeaderText("Could not open Game screen");
+                alert.setContentText(e.toString());
+                alert.showAndWait();
+            }
         }
     }
 }
